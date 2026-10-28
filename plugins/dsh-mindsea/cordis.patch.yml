@@ -1,0 +1,13 @@
+- insert:
+    - id: mindsea
+      name: dsh-mindsea
+      config:
+        baseUrl: http://127.0.0.1:4318
+        apiKeyEnv: MINDSEA_API_KEY
+        userId: local-owner
+        provider: deepseek
+        model: deepseek-chat
+        timeZone: Asia/Shanghai
+        hookBudgetMs: 5000
+        pollMs: 1000
+        sessionIds: []
