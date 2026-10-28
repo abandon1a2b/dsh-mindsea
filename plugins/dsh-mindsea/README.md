@@ -28,7 +28,7 @@ Future 的状态只有读取结果 `ready / empty / pending`，网络失败走�
 3. 安装本地插件包。先用目标机器的 `dsh plugin --help` 核对当前 CLI；以下以 web profile 为例：
 
    ```sh
-   dsh plugin --profile web add /absolute/path/dsh-mindsea-0.1.0.tgz
+   dsh plugin --profile web add /absolute/path/dsh-mindsea-0.2.0.tgz
    ```
 
 4. 在该 profile 的 `id: mindsea` loader entry 配置以下字段，并确保启动 DSH 的进程也带有相同 `MINDSEA_API_KEY`。然后重新加载 profile / 重启 DSH。
@@ -67,7 +67,7 @@ Future 的状态只有读取结果 `ready / empty / pending`，网络失败走�
 
 通过官方 npm 发布的 0.2.1-rc.2 类型检查，参考了 `dsh-agent-loop` 的实际调用顺序、`dsh-tools` 的工具协议和 `dsh-llm` 的流事件协议。
 
-自动测试使用真实 SQLite/HTTP、确定性的模型替身和钩子测试宿主。还没有在真实运行的 DSH profile 上启动测试，也未调用真实供应商模型。本包不会自行安装或改写你的 DSH 配置。
+自动测试使用真实 SQLite/HTTP、确定性的模型替身和钩子测试宿主。已在隔离的官方 DSH 核心运行时验证，无真实供应商模型调用；未修改用户的实际 profile。本包不会自行安装或改写你的 DSH 配置。
 
 官方来源：
 
@@ -75,3 +75,9 @@ Future 的状态只有读取结果 `ready / empty / pending`，网络失败走�
 - https://www.npmjs.com/package/@deepseek-ai/dsh-agent-loop/v/0.2.1-rc.2
 - https://www.npmjs.com/package/@deepseek-ai/dsh-tools/v/0.2.1-rc.2
 - https://www.npmjs.com/package/@deepseek-ai/dsh-llm/v/0.2.1-rc.2
+
+## L0～L3（v0.2.0）
+
+独立 Memory worker 已接入 DSH 模型。每条人类消息生成证据驱动的 L1/L2/L3 增量提案，服务端执行画像激活与失效规则。`mindsea_recall` 读取分层记忆，`mindsea_remember` 使用当前用户原话保存 L1；新增 `mindsea_memory_inspect`、`mindsea_memory_action`、`mindsea_forget`。详细协议见 [分层记忆实现](../../docs/layered-memory.md)。
+
+官方 DSH 核心运行时集成测试已通过，使用本地模型适配器，不修改真实用户 profile。每个用户输入可能额外触发一次 Memory 整理推理；它和 Future 维护是两个独立循环。

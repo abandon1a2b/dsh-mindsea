@@ -1,8 +1,9 @@
+import { migrateMemory } from "./memory-schema.ts";
 import type { DatabaseSync } from "node:sqlite";
 
 export function initializeSchema(db: DatabaseSync): void {
   const version = db.prepare("PRAGMA user_version").get()!.user_version as number;
-  if (version > 2) {
+  if (version > 3) {
     throw new Error("Database schema is newer than this server");
   }
   db.exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;");
@@ -25,8 +26,10 @@ export function initializeSchema(db: DatabaseSync): void {
         result TEXT
       );
       CREATE INDEX IF NOT EXISTS reconcile_pending ON reconciliation_jobs(user_id,result,seq);
-      PRAGMA user_version=2;
+
     `);
+    migrateMemory(db);
+    db.exec("PRAGMA user_version=3");
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

@@ -1,5 +1,6 @@
+import { MemoryStore } from "./memory-store.ts";
 import { DatabaseSync } from "node:sqlite";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { initializeSchema } from "./schema.ts";
 import { AppError, userSchema } from "../../contracts/common.ts";
 import { eventSchema, type Event } from "../../contracts/events.ts";
@@ -17,6 +18,7 @@ function decode<T>(row: Row | undefined): T {
 }
 export class Store {
   db: DatabaseSync;
+  memory: MemoryStore;
   constructor(path: string) {
     this.db = new DatabaseSync(path);
     try {
@@ -25,6 +27,7 @@ export class Store {
       this.db.close();
       throw error;
     }
+    this.memory = new MemoryStore(this.db);
   }
 
   close() {
@@ -41,6 +44,15 @@ export class Store {
     userSchema.parse(user);
     const data = eventSchema.parse(input);
     const id = data.id ?? randomUUID();
+    const hash = createHash("sha256").update(data.content).digest("hex");
+    if (
+      this.db
+        .prepare(
+          "SELECT 1 FROM event_tombstones WHERE user_id=? AND (event_id=? OR content_hash=?)",
+        )
+        .get(user, id, hash)
+    )
+      throw new AppError(410, "Event has been forgotten");
     const existing = this.db.prepare("SELECT document FROM events WHERE id=?").get(id);
     if (existing) {
       const old = decode<Event>(existing);
@@ -59,6 +71,9 @@ export class Store {
       id,
       userId: user,
       occurredAt: data.occurredAt ?? new Date().toISOString(),
+      recordedAt: new Date().toISOString(),
+      producer: data.producer ?? "api",
+      sourceKind: data.role === "user" ? "human" : data.role,
     };
     this.db.exec("BEGIN IMMEDIATE");
     try {
@@ -68,6 +83,12 @@ export class Store {
       this.db
         .prepare("INSERT INTO reconciliation_jobs(event_id,user_id) VALUES(?,?)")
         .run(id, user);
+      if (data.role === "user")
+        this.db
+          .prepare(
+            "INSERT OR IGNORE INTO memory_jobs(user_id,event_id,policy) VALUES(?,?,'memory-v1')",
+          )
+          .run(user, id);
       this.db.exec("COMMIT");
       return result;
     } catch (error) {

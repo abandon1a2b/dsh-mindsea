@@ -2,7 +2,7 @@
 
 - 先读 `docs/development.md`；涉及分层记忆时同时读 `docs/design/l3-memory.md`。
 - 产品约定：Memory 被动检索；Future 每轮检查；Future 更新由新事件独立触发。不得把更新绑定到召回成功。
-- L0～L3 目前为设计；实现时按设计中的分期交付，不能以未实现的接口充当已完成能力。
+- L0～L3 核心流程已实现，参见 `docs/layered-memory.md`。不得将确定性测试模型的结果声称为真实语义准确率。
 - 保持 contracts / application / storage / search / http / client / DSH 适配的边界。
 - 生产 TypeScript 禁止显式 any；外部数据在边界校验；禁止吞掉错误后推进处理 checkpoint。
 - 不在 main.ts 或插件 index.ts 堆业务逻辑。源代码使用 kebab-case 文件名。

@@ -39,7 +39,7 @@ test("events and maintenance jobs are durable and idempotent; v1 data is preserv
     try {
       assert.equal(store.nextReconciliation(user)?.event.id, "cancel");
       assert.equal(store.agenda(user).items[0]?.content, "远期面试");
-      assert.equal(store.db.prepare("PRAGMA user_version").get()!.user_version, 2);
+      assert.equal(store.db.prepare("PRAGMA user_version").get()!.user_version, 3);
       store.db.exec(
         `CREATE TRIGGER fail_job BEFORE INSERT ON reconciliation_jobs BEGIN SELECT RAISE(ABORT,'queue failure'); END;`,
       );

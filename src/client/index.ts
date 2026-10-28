@@ -1,3 +1,12 @@
+import type {
+  Evidence,
+  MemoryJob,
+  MemoryPlan,
+  MemoryQuery,
+  MemoryRecall,
+  MemoryRecord,
+  MemoryWatermark,
+} from "../contracts/memory.ts";
 import type { Event } from "../contracts/events.ts";
 import type { Item, ItemInput } from "../contracts/items.ts";
 import type {
@@ -57,12 +66,69 @@ export class MindseaClient {
       );
     return response.json() as Promise<T>;
   }
+  rememberEvidence(content: string, evidence: Evidence) {
+    return this.request<MemoryRecord>("/v1/memory/remember", "POST", {
+      content,
+      evidence,
+    });
+  }
+  claimMemory() {
+    return this.request<{ job: MemoryJob | null }>("/v1/memory/jobs/claim", "POST");
+  }
+  commitMemory(job: MemoryJob, plan: MemoryPlan) {
+    return this.request<{ items: MemoryRecord[] }>(
+      `/v1/memory/jobs/${job.id}/commit`,
+      "POST",
+      { token: job.token, revision: job.revision, plan },
+    );
+  }
+  failMemory(job: MemoryJob) {
+    return this.request(`/v1/memory/jobs/${job.id}/fail`, "POST", { token: job.token });
+  }
+  memoryQuery(query: MemoryQuery) {
+    return this.request<MemoryRecall>("/v1/memory/query", "POST", query);
+  }
+  memoryRecord(id: string) {
+    return this.request<MemoryRecord>(`/v1/memory/records/${encodeURIComponent(id)}`);
+  }
+  memoryHistory(id: string) {
+    return this.request<MemoryRecord[]>(
+      `/v1/memory/records/${encodeURIComponent(id)}/history`,
+    );
+  }
+  evidence(id: string, start = 0, end?: number) {
+    return this.request<Evidence>(
+      `/v1/memory/evidence/${encodeURIComponent(id)}?start=${start}${end === undefined ? "" : `&end=${end}`}`,
+    );
+  }
+  memoryJobs() {
+    return this.request<{ jobs: unknown[]; watermark: MemoryWatermark }>(
+      "/v1/memory/jobs",
+    );
+  }
+  retryMemory(id: number) {
+    return this.request(`/v1/memory/jobs/${id}/retry`, "POST");
+  }
+  rebuildMemory() {
+    return this.request<{ queued: number }>("/v1/memory/rebuild", "POST");
+  }
+  memoryAction(input: unknown) {
+    return this.request<MemoryRecord>("/v1/memory/actions", "POST", input);
+  }
+  forgetEvents(eventIds: string[]) {
+    return this.request<{ forgotten: number; affectedMemories: number }>(
+      "/v1/memory/forget",
+      "POST",
+      { eventIds },
+    );
+  }
   record(input: {
     id?: string;
     sessionId: string;
     role: "user" | "assistant" | "tool";
     content: string;
     occurredAt?: string;
+    producer?: string;
   }) {
     return this.request<Event>("/v1/events", "POST", input);
   }

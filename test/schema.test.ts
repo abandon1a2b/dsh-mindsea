@@ -18,5 +18,36 @@ test("failed schema upgrade rolls back DDL and does not advance its version", (t
   );
   db.exec("DROP TABLE reconciliation_jobs");
   initializeSchema(db);
-  assert.equal(db.prepare("PRAGMA user_version").get()!.user_version, 2);
+  assert.equal(db.prepare("PRAGMA user_version").get()!.user_version, 3);
+});
+
+test("schema v2 upgrades events without fabricating verified L3 or replaying old jobs", (t) => {
+  const db = new DatabaseSync(":memory:");
+  t.after(() => db.close());
+  db.exec(
+    `CREATE TABLE events(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,document TEXT NOT NULL); PRAGMA user_version=2;`,
+  );
+  db.prepare("INSERT INTO events VALUES(?,?,?)").run(
+    "legacy",
+    "alice",
+    JSON.stringify({
+      id: "legacy",
+      userId: "alice",
+      sessionId: "s",
+      role: "user",
+      content: "旧的原始记录",
+      occurredAt: "2020-01-01T00:00:00Z",
+    }),
+  );
+  initializeSchema(db);
+  const event = JSON.parse(
+    db.prepare("SELECT document FROM events").get()!.document as string,
+  );
+  assert.equal(event.sourceKind, "human");
+  assert.equal(event.producer, "legacy");
+  assert.equal(event.content, "旧的原始记录");
+  assert.equal(db.prepare("SELECT count(*) n FROM memory_jobs").get()!.n, 0);
+  assert.equal(db.prepare("SELECT count(*) n FROM memory_records").get()!.n, 0);
+  initializeSchema(db);
+  assert.equal(db.prepare("SELECT count(*) n FROM events").get()!.n, 1);
 });

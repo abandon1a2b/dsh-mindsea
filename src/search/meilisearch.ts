@@ -1,3 +1,4 @@
+import { MemoryIndex } from "./memory-index.ts";
 import { z } from "zod";
 const taskReceiptSchema = z.object({ taskUid: z.number().int().nonnegative() });
 const taskStateSchema = z.object({
@@ -9,12 +10,14 @@ import type { Store } from "../storage/sqlite/store.ts";
 
 // SQLite is authoritative. This optional index is disposable and rebuildable.
 export class MeiliSearch {
+  readonly memory: MemoryIndex;
   url: string;
   key: string;
   index: string;
   ready = false;
   lastError: string | null = null;
   constructor(url: string, key = "", index = "mindsea_v1") {
+    this.memory = new MemoryIndex(this);
     this.url = url.replace(/\/$/, "");
     this.key = key;
     this.index = index;

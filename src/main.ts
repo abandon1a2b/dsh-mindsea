@@ -27,8 +27,8 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 let indexing: Promise<void> | undefined;
 async function sync() {
   if (stopped || !search) return;
-  indexing = search
-    .sync(store)
+  indexing = Promise.all([search.sync(store), search.memory.sync(store)])
+    .then(() => undefined)
     .catch((error) => console.error("Search sync deferred:", error.message));
   await indexing;
   if (!stopped) timer = setTimeout(() => void sync(), 2000);

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { Message } from "@deepseek-ai/dsh-llm";
 import type { Session, SessionEvent } from "@deepseek-ai/dsh-session";
 import { MindseaClient, MindseaHttpError } from "../../../src/client/index.ts";
-function eventId(sessionId: string, messageId: string) {
+export function eventId(sessionId: string, messageId: string) {
   return `dsh:${createHash("sha256")
     .update(JSON.stringify([sessionId, messageId]))
     .digest("hex")}`;
@@ -11,8 +11,7 @@ function textOf(message: Message) {
   return message.content
     .filter((block) => block.type === "text")
     .map((block) => block.text)
-    .join("\n")
-    .trim();
+    .join("\n");
 }
 
 export function createEventBuffer(
@@ -30,7 +29,7 @@ export function createEventBuffer(
     )
       return;
     const content = textOf(message);
-    if (!content) return;
+    if (!content.trim()) return;
     const id = eventId(sessionId, message.id);
     pending.set(id, {
       id,
@@ -38,6 +37,7 @@ export function createEventBuffer(
       role: message.role as "user" | "assistant",
       content,
       occurredAt,
+      producer: "dsh",
     });
   };
   const capture = (session: Session, event: SessionEvent) => {
@@ -56,6 +56,10 @@ export function createEventBuffer(
       try {
         await client.record(event);
       } catch (error) {
+        if (error instanceof MindseaHttpError && error.status === 410) {
+          pending.delete(id);
+          continue;
+        }
         if (!(error instanceof MindseaHttpError) || error.status !== 409) throw error;
         const old = await client.event(id);
         if (

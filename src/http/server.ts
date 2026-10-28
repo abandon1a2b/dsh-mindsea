@@ -8,6 +8,7 @@ import { send } from "./io.ts";
 import { agendaRoutes } from "./routes/agenda.ts";
 import { eventsRoutes } from "./routes/events.ts";
 import { itemsRoutes } from "./routes/items.ts";
+import { memoryRoutes } from "./routes/memory.ts";
 import { retrievalRoutes } from "./routes/retrieval.ts";
 function digest(value: string) {
   return createHash("sha256").update(value).digest();
@@ -43,7 +44,13 @@ export function createApp(store: Store, apiKey: string, search?: MeiliSearch) {
         search,
         recall,
       };
-      for (const route of [agendaRoutes, eventsRoutes, itemsRoutes, retrievalRoutes]) {
+      for (const route of [
+        memoryRoutes,
+        agendaRoutes,
+        eventsRoutes,
+        itemsRoutes,
+        retrievalRoutes,
+      ]) {
         if (await route(context)) return;
       }
       throw new AppError(404, "Not found");

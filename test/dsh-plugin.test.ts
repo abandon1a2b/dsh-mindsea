@@ -210,6 +210,14 @@ test("passive Memory tools retrieve only memory and write only when invoked", as
   const h = await harness(t);
   await h.step(1, "hello");
   h.store.save("owner", { kind: "loop", content: "喜欢写游戏" });
+  const statement = createMessage({
+    role: "user",
+    source: { kind: "user" },
+    content: [{ type: "text", text: "我喜欢简洁回答" }],
+  });
+  h.agent.session.snapshotEvents = () => [
+    { type: "user/message", data: statement, time: Date.now(), seq: 0 } as never,
+  ];
   const tool = h.tools.get("mindsea_remember");
   await tool.execute(
     { content: "喜欢简洁回答" },
@@ -224,7 +232,7 @@ test("passive Memory tools retrieve only memory and write only when invoked", as
       ),
   );
   assert.equal(result.items.length, 1);
-  assert.equal(result.items[0].kind, "memory");
+  assert.equal(result.items[0].layer, "L1");
   await assert.rejects(() =>
     tool.execute({ content: "x" }, { signal: new AbortController().signal }),
   );

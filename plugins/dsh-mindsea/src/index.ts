@@ -5,6 +5,8 @@ import { createEventBuffer } from "./event-buffer.ts";
 import { createMaintenance } from "./maintenance.ts";
 import { registerFutureHook } from "./future-hook.ts";
 import { registerMemoryTools } from "./memory-tools.ts";
+import { makeMemoryDecider } from "./memory-model.ts";
+import { startMemoryMaintenance } from "./memory-maintenance.ts";
 import { makeDecider } from "./model.ts";
 
 // DSH loader entry: all runtime logic belongs to the feature modules below.
@@ -56,6 +58,13 @@ export function apply(ctx: Context, config: Config) {
     clientFor,
     warn,
   );
+  const stopMemory = startMemoryMaintenance(
+    client,
+    makeMemoryDecider(ctx, config),
+    lifetime.signal,
+    config.pollMs,
+    warn,
+  );
   const offTools = registerMemoryTools(ctx, enabled, clientFor);
   for (const agent of ctx.agents.list()) buffer.replay(agent.session);
   const timer = setInterval(() => void maintenance.pump(), config.pollMs);
@@ -68,6 +77,6 @@ export function apply(ctx: Context, config: Config) {
     offCreated();
     offStep();
     offTools();
-    await maintenance.settled();
+    await Promise.all([maintenance.settled(), stopMemory()]);
   });
 }

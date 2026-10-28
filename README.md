@@ -13,7 +13,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-local--first-003B57?style=flat-square&logo=sqlite&logoColor=white)
 ![Status](https://img.shields.io/badge/status-MVP-F0B35B?style=flat-square)
 
-[快速开始](#快速开始) · [工作方式](#工作方式) · [L3 路线图](#l3-路线图) · [开发](#开发) · [文档](#文档)
+[快速开始](#快速开始) · [工作方式](#工作方式) · [分层记忆](#l0l3-分层记忆) · [开发](#开发) · [文档](#文档)
 
 </div>
 
@@ -28,7 +28,7 @@
 
 `dsh-mindsea` 把记忆、未来关注点与未闭环事项放在同一个脑海里。SQLite 保存事实和来源，DSH 提供对话钩子与模型能力，Meilisearch 可选接入。
 
-**当前是可运行的服务 + DSH 插件 MVP。L0～L3 分层设计已经完成，L1～L3 自动整理尚未实现。**
+**当前已实现 L0～L3 分层记忆与 DSH 插件：原文证据 → 事实 → 主题 → 长期画像。Memory 按需读取，后台整理与 Future 独立运行。**
 
 ## 工作方式
 
@@ -46,10 +46,13 @@ Future **有候选**，模型判断是否自然提起；**没有候选**，正�
 flowchart LR
   User[新对话] --> Capture[DSH 事件采集]
   Capture --> DB[(SQLite 权威数据)]
-  DB --> Queue[持久化维护队列]
+  DB --> Queue[Future 维护队列]
   Queue --> Model[DSH 模型理解新证据]
   Model --> Update[原子更新事项与版本]
   Update --> DB
+  DB --> MemoryQueue[独立 Memory 队列]
+  MemoryQueue --> Layers[L1 事实 → L2 主题 → L3 画像]
+  Layers --> DB
 
   Hook[每轮 Future 钩子] --> Check[检查当前事项]
   DB --> Check
@@ -99,10 +102,10 @@ npm run build
 npm pack ./plugins/dsh-mindsea
 ```
 
-得到 `dsh-mindsea-0.1.0.tgz`。在目标机器核对 `dsh plugin --help` 后安装，例如：
+得到 `dsh-mindsea-0.2.0.tgz`。在目标机器核对 `dsh plugin --help` 后安装，例如：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-mindsea-0.1.0.tgz
+dsh plugin --profile web add /absolute/path/dsh-mindsea-0.2.0.tgz
 ```
 
 插件按 **DSH 0.2.1-rc.2** 的官方类型和运行时代码适配。启动 DSH 的进程也必须设置同一个 `MINDSEA_API_KEY`。
@@ -143,16 +146,16 @@ npm start
 
 </details>
 
-## L3 路线图
+## L0～L3 分层记忆
 
 L3 的目标是**有证据、可修正、有适用范围的长期画像**。
 
-| 层级                | 作用                         | 当前进度                             |
-| :------------------ | :--------------------------- | :----------------------------------- |
-| **L0 · 原文**       | 保留对话、角色、时间和来源   | 原始事件存储已实现；精细证据片段待补 |
-| **L1 · 事实与经历** | 从原文提取可验证的原子事实   | 已设计，待实现                       |
-| **L2 · 主题**       | 组织跨会话的发展、变化和例外 | 已设计，待实现                       |
-| **L3 · 长期画像**   | 形成稳定偏好、习惯及长期目标 | 已设计，待实现                       |
+| 层级                | 作用                         | 当前进度                                  |
+| :------------------ | :--------------------------- | :---------------------------------------- |
+| **L0 · 原文**       | 保留对话、角色、时间和来源   | 已实现：原文、Unicode 引用与 SHA-256 校验 |
+| **L1 · 事实与经历** | 从原文提取可验证的原子事实   | 已实现                                    |
+| **L2 · 主题**       | 组织跨会话的发展、变化和例外 | 已实现                                    |
+| **L3 · 长期画像**   | 形成稳定偏好、习惯及长期目标 | 已实现                                    |
 
 - 系统推断先成为候选，经用户确认后再激活。
 - 同一条原始证据经过多次摘要，仍然只算一份证据。
@@ -160,9 +163,9 @@ L3 的目标是**有证据、可修正、有适用范围的长期画像**。
 - “忘记”需要处理根证据和派生记录，避免重放后复活。
 - Memory 仍按需检索，Future 始终独立更新。
 
-实施顺序：**证据与 L1 → L2 主题 → L3 明确画像 → 分层检索验收**。
+DSH 已提供被动检索、明确记忆、画像确认、纠错审查和遗忘工具。旧数据通过 schema v3 迁移保留，新增独立任务队列支持租约、重试与人工重建。
 
-阅读完整的 [L0～L3 设计](docs/design/l3-memory.md)。
+阅读 [L0～L3 使用与 API](docs/layered-memory.md) · [设计决策](docs/design/l3-memory.md)。
 
 ## 开发
 
@@ -193,17 +196,17 @@ docs/                   设计、协议与开发规范
 
 自动测试使用**真实 SQLite 与 HTTP 服务**，覆盖身份隔离、版本冲突、事务回滚、时间边界、重启续接、索引失败回退、独立 Future 更新及 DSH 钩子分支。
 
-**DSH 宿主和模型使用测试替身，Meilisearch 使用本地模拟服务。真实 DSH、真实模型与真实 Meilisearch 联调仍待完成。** 当前尚无管理界面、主动消息通知或生产负载验证。
+**已在官方 DSH 0.2.1 核心运行时验证插件装载、完整回合、后台 L3 整理和卸载；模型使用本地适配器。真实供应商语义质量与真实 Meilisearch 联调仍待验证。** 当前尚无管理界面、主动消息通知或生产负载验证。
 
 ## 文档
 
-| 想了解什么             | 从这里开始                                |
-| :--------------------- | :---------------------------------------- |
-| 如何安装到 DSH         | [插件指南](plugins/dsh-mindsea/README.md) |
-| 服务接口、配置与状态   | [服务与 API](docs/service-api.md)         |
-| 如何形成 L3            | [分层记忆设计](docs/design/l3-memory.md)  |
-| 如何接入其他宿主       | [通用接入协议](docs/integration.md)       |
-| 如何组织代码与提交变更 | [开发规范](docs/development.md)           |
+| 想了解什么             | 从这里开始                                   |
+| :--------------------- | :------------------------------------------- |
+| 如何安装到 DSH         | [插件指南](plugins/dsh-mindsea/README.md)    |
+| 服务接口、配置与状态   | [服务与 API](docs/service-api.md)            |
+| 如何形成 L3            | [分层记忆实现与使用](docs/layered-memory.md) |
+| 如何接入其他宿主       | [通用接入协议](docs/integration.md)          |
+| 如何组织代码与提交变更 | [开发规范](docs/development.md)              |
 
 ---
 

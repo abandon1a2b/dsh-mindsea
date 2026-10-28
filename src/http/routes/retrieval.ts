@@ -7,10 +7,12 @@ export async function retrievalRoutes(context: RouteContext): Promise<boolean> {
   const { method, path, user, store, search, recall, request, response } = context;
   if (method === "POST" && path === "/v1/memory/recall") {
     const input = querySchema.parse(await body(request));
+    const items = search
+      ? await search.recall(store, user, input.query, input.limit, true)
+      : store.recall(user, input.query, input.limit, true);
     send(response, 200, {
-      items: search
-        ? await search.recall(store, user, input.query, input.limit, true)
-        : store.recall(user, input.query, input.limit, true),
+      items: items.map((item) => ({ ...item, verification: "legacy-unverified" })),
+      hint: "Use /v1/memory/query for evidence-backed L1-L3.",
     });
     return true;
   }
