@@ -1,10 +1,10 @@
 import { createServer } from "node:http";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { AppError, userSchema } from "../contracts/common.ts";
 import type { Store } from "../storage/sqlite/store.ts";
 import type { MeiliSearch } from "../search/meilisearch.ts";
-import { send } from "./io.ts";
+import { send, authorizeIO, body } from "./io.ts";
 import { agendaRoutes } from "./routes/agenda.ts";
 import { eventsRoutes } from "./routes/events.ts";
 import { itemsRoutes } from "./routes/items.ts";
@@ -13,7 +13,12 @@ import { retrievalRoutes } from "./routes/retrieval.ts";
 function digest(value: string) {
   return createHash("sha256").update(value).digest();
 }
-export function createApp(store: Store, apiKey: string, search?: MeiliSearch) {
+export function createApp(
+  store: Store,
+  apiKey: string,
+  search?: MeiliSearch,
+  options: { legacyAccess?: boolean } = {},
+) {
   if (apiKey.length < 24)
     throw new Error("MINDSEA_API_KEY must contain at least 24 characters");
   return createServer(async (request, response) => {
@@ -25,9 +30,40 @@ export function createApp(store: Store, apiKey: string, search?: MeiliSearch) {
         return;
       }
       const supplied = request.headers.authorization ?? "";
-      if (!timingSafeEqual(digest(supplied), digest(`Bearer ${apiKey}`)))
-        throw new AppError(401, "Unauthorized");
-      const user = userSchema.parse(request.headers["x-user-id"]);
+      let user: string;
+      if (
+        options.legacyAccess &&
+        timingSafeEqual(digest(supplied), digest(`Bearer ${apiKey}`))
+      ) {
+        user = userSchema.parse(request.headers["x-user-id"]);
+      } else {
+        if (!supplied.startsWith("Bearer ")) throw new AppError(401, "Unauthorized");
+        const identity = store.access.authenticate(supplied.slice(7));
+        authorizeIO(request, response, () => {
+          store.access.authenticate(supplied.slice(7));
+        });
+        const claimed = request.headers["x-user-id"];
+        if (claimed && claimed !== identity.brainId)
+          throw new AppError(403, "Brain identity mismatch");
+        if (
+          request.headers["x-brain-id"] &&
+          request.headers["x-brain-id"] !== identity.brainId
+        )
+          throw new AppError(403, "Brain identity mismatch");
+        if (url.pathname === "/v1/me" && method === "GET") {
+          send(response, 200, identity);
+          return;
+        }
+        if (url.pathname === "/v1/session-binding" && method === "POST") {
+          const data = z
+            .object({ sessionId: z.string().min(1).max(200) })
+            .strict()
+            .parse(await body(request));
+          send(response, 200, store.access.bind(identity, data.sessionId));
+          return;
+        }
+        user = identity.namespace;
+      }
       const path = url.pathname;
       const recall = (query: string, limit: number) =>
         search

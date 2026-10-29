@@ -1,5 +1,10 @@
 import Schema from "@deepseek-ai/schemastery";
 export interface Config {
+  legacyAccess?: boolean;
+  enabled?: boolean;
+  audience?: "private" | "group" | "unknown";
+  activationFile?: string;
+  workspaces?: { path: string; includeChildren: boolean }[];
   baseUrl: string;
   apiKeyEnv: string;
   userId: string;
@@ -11,6 +16,16 @@ export interface Config {
   pollMs: number;
 }
 export const Config = Schema.object({
+  legacyAccess: Schema.boolean().default(false),
+  enabled: Schema.boolean().default(false),
+  audience: Schema.union(["private", "group", "unknown"]).default("unknown"),
+  activationFile: Schema.string(),
+  workspaces: Schema.array(
+    Schema.object({
+      path: Schema.string().required(),
+      includeChildren: Schema.boolean().default(false),
+    }),
+  ).default([]),
   baseUrl: Schema.string().default("http://127.0.0.1:4318"),
   apiKeyEnv: Schema.string().default("MINDSEA_API_KEY"),
   userId: Schema.string().required(),

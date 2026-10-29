@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 import type { Message } from "@deepseek-ai/dsh-llm";
 import type { Session, SessionEvent } from "@deepseek-ai/dsh-session";
 import { MindseaClient, MindseaHttpError } from "../../../src/client/index.ts";
-export function eventId(sessionId: string, messageId: string) {
+export function eventId(sessionId: string, messageId: string, brainId = "") {
   return `dsh:${createHash("sha256")
-    .update(JSON.stringify([sessionId, messageId]))
+    .update(JSON.stringify([brainId, sessionId, messageId]))
     .digest("hex")}`;
 }
 function textOf(message: Message) {
@@ -30,7 +30,7 @@ export function createEventBuffer(
       return;
     const content = textOf(message);
     if (!content.trim()) return;
-    const id = eventId(sessionId, message.id);
+    const id = eventId(sessionId, message.id, client.userId);
     pending.set(id, {
       id,
       sessionId,
@@ -48,11 +48,15 @@ export function createEventBuffer(
   };
   const replay = (session: Session) => {
     if (replayed.has(session) || !enabled(session.id)) return;
-    for (const event of session.snapshotEvents()) capture(session, event);
+    // Activation is prospective: never import pre-existing chat implicitly.
     replayed.add(session);
   };
   const flush = async () => {
     for (const [id, event] of pending) {
+      if (!enabled(event.sessionId)) {
+        pending.delete(id);
+        continue;
+      }
       try {
         await client.record(event);
       } catch (error) {

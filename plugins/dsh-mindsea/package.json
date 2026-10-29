@@ -1,6 +1,6 @@
 {
   "name": "dsh-mindsea",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Mindsea 脑海: passive Memory tools and per-turn Future hooks for DSH",
   "type": "module",
   "main": "./lib/index.js",

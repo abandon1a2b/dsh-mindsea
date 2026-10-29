@@ -25,6 +25,7 @@ const allowed: Record<string, string[]> = {
   search: ["search", "storage", "contracts"],
   http: ["http", "application", "storage", "search", "contracts"],
   dsh: ["dsh", "client", "application", "contracts"],
+  settings: ["settings", "storage", "contracts"],
   main: ["contracts", "application", "storage", "search", "http", "client"],
 };
 

@@ -1,3 +1,5 @@
+> v0.3 配置变更：默认关闭，先按 [设置试用指南](../../docs/settings-trial.md) 生成个人凭据及 activationFile。以下原有服务/模型说明仍适用，旧共享密钥配置仅用于显式 legacy 模式。自动回放旧会话已关闭。
+
 # dsh-mindsea · 脑海
 
 Mindsea 的首个宿主插件，面向 DSH **0.2.1-rc.2**。插件实现全部使用 TypeScript，发布包是编译后的 ESM。
@@ -28,7 +30,7 @@ Future 的状态只有读取结果 `ready / empty / pending`，网络失败走�
 3. 安装本地插件包。先用目标机器的 `dsh plugin --help` 核对当前 CLI；以下以 web profile 为例：
 
    ```sh
-   dsh plugin --profile web add /absolute/path/dsh-mindsea-0.2.0.tgz
+   dsh plugin --profile web add /absolute/path/dsh-mindsea-0.3.0.tgz
    ```
 
 4. 在该 profile 的 `id: mindsea` loader entry 配置以下字段，并确保启动 DSH 的进程也带有相同 `MINDSEA_API_KEY`。然后重新加载 profile / 重启 DSH。
@@ -47,7 +49,7 @@ Future 的状态只有读取结果 `ready / empty / pending`，网络失败走�
 
 `provider` / `model` 必须改为你在 DSH 已配置且可用的模型路由；示例不是自动探测结果。维护使用现有 DSH `llm` 服务，插件不额外保存供应商 API key。每条新文本对话可能产生一次额外维护模型调用，读取 Future 本身不调用模型。
 
-`userId` 绑定可信的个人 profile。空 sessionIds 表示这个个人 profile 的所有会话；设置 ID 列表则只启用对应会话。不要把同一固定 userId 的实例直接挂到多人/QQ群共享会话中；这种接入需要桥接端提供可信用户映射，当前插件不支持多用户身份自动识别。
+`userId` 绑定可信的个人 profile。空 sessionIds 不匹配任何会话，只有显式会话或工作区规则会启用；设置 ID 列表则只启用对应会话。不要把同一固定 userId 的实例直接挂到多人/QQ群共享会话中；这种接入需要桥接端提供可信用户映射，当前插件不支持多用户身份自动识别。
 
 插件本身只需要 Node.js 22+；SQLite 留在独立的 Node.js 24+ Mindsea 服务，避免要求 DSH 进程加载 SQLite。
 

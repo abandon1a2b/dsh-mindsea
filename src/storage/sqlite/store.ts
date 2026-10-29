@@ -1,3 +1,4 @@
+import { AccessStore } from "./access.ts";
 import { MemoryStore } from "./memory-store.ts";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomUUID } from "node:crypto";
@@ -19,6 +20,7 @@ function decode<T>(row: Row | undefined): T {
 export class Store {
   db: DatabaseSync;
   memory: MemoryStore;
+  access: AccessStore;
   constructor(path: string) {
     this.db = new DatabaseSync(path);
     try {
@@ -28,6 +30,7 @@ export class Store {
       throw error;
     }
     this.memory = new MemoryStore(this.db);
+    this.access = new AccessStore(this.db);
   }
 
   close() {

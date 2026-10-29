@@ -1,6 +1,6 @@
 {
   "name": "dsh-mindsea",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Mindsea 脑海: personal mind service with passive Memory and event-driven Future",
@@ -19,7 +19,8 @@
     "build:server": "tsc -p tsconfig.build.json",
     "lint": "eslint src plugins/dsh-mindsea/src scripts test",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "settings": "node src/settings/main.ts"
   },
   "dependencies": {
     "zod": "^4.6.7"

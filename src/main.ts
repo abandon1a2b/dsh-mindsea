@@ -17,7 +17,9 @@ const search = process.env.MEILI_URL
       process.env.MEILI_INDEX,
     )
   : undefined;
-const server = createApp(store, key, search);
+const server = createApp(store, key, search, {
+  legacyAccess: process.env.MINDSEA_LEGACY_ACCESS === "1",
+});
 const host = process.env.MINDSEA_HOST ?? "127.0.0.1";
 const port = Number(process.env.MINDSEA_PORT ?? 4318);
 if (!Number.isInteger(port) || port < 1 || port > 65535)

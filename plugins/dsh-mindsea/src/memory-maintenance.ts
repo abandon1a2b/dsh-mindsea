@@ -11,10 +11,11 @@ export function startMemoryMaintenance(
   signal: AbortSignal,
   pollMs: number,
   warn: () => void,
+  enabled: () => boolean = () => true,
 ) {
   let running: Promise<void> | undefined;
   const pump = () => {
-    if (signal.aborted || running) return;
+    if (signal.aborted || running || !enabled()) return;
     running = (async () => {
       try {
         for (let i = 0; i < 20 && !signal.aborted; i++)

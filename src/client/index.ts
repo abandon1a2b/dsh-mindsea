@@ -66,6 +66,9 @@ export class MindseaClient {
       );
     return response.json() as Promise<T>;
   }
+  bindSession(sessionId: string) {
+    return this.request("/v1/session-binding", "POST", { sessionId });
+  }
   rememberEvidence(content: string, evidence: Evidence) {
     return this.request<MemoryRecord>("/v1/memory/remember", "POST", {
       content,

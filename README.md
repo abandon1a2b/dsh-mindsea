@@ -72,6 +72,12 @@ flowchart LR
 - **轻部署**：默认只需要 Node.js 和本地 SQLite；Meilisearch 故障时回退本地检索。
 - **纯 TypeScript**：服务、客户端、后台维护器与 DSH 插件均使用 TypeScript。
 
+## 人员与工作区设置（v0.3 试用）
+
+运行 `npm run settings` 打开本机设置页，创建人员与脑海、选择工作区并生成个人 DSH 配置。默认关闭，服务使用绑定脑海的独立凭据；共享密钥不能再随意选择用户。详见 [试用步骤与当前边界](docs/settings-trial.md)。
+
+当前设置页独立运行，不是 DSH 原生嵌入面板；角色规则与群聊身份适配还未接入。
+
 ## 快速开始
 
 ### 1. 启动脑海服务
@@ -102,13 +108,13 @@ npm run build
 npm pack ./plugins/dsh-mindsea
 ```
 
-得到 `dsh-mindsea-0.2.0.tgz`。在目标机器核对 `dsh plugin --help` 后安装，例如：
+得到 `dsh-mindsea-0.3.0.tgz`。在目标机器核对 `dsh plugin --help` 后安装，例如：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-mindsea-0.2.0.tgz
+dsh plugin --profile web add /absolute/path/dsh-mindsea-0.3.0.tgz
 ```
 
-插件按 **DSH 0.2.1-rc.2** 的官方类型和运行时代码适配。启动 DSH 的进程也必须设置同一个 `MINDSEA_API_KEY`。
+插件按 **DSH 0.2.1-rc.2** 的官方类型和运行时代码适配。启动 DSH 的进程应加载设置页生成的个人凭据文件；不要将服务兼容密钥当作个人凭据。
 
 ### 3. 配置个人 profile
 
@@ -116,8 +122,11 @@ dsh plugin --profile web add /absolute/path/dsh-mindsea-0.2.0.tgz
 
 ```yaml
 baseUrl: http://127.0.0.1:4318
-apiKeyEnv: MINDSEA_API_KEY
-userId: local-owner
+enabled: false
+audience: private
+activationFile: /absolute/path/from/settings/activation.json
+apiKeyEnv: MINDSEA_PERSONAL_KEY_from_settings
+userId: brain-id-from-settings
 provider: deepseek
 model: deepseek-chat
 timeZone: Asia/Shanghai
@@ -126,7 +135,7 @@ pollMs: 1000
 sessionIds: []
 ```
 
-`provider` / `model` 请替换成 DSH 中实际可用的模型路由。`userId` 是可信个人身份；空 `sessionIds` 表示该个人 profile 的全部会话，不适合直接用于多人共享聊天。维护新对话会产生额外模型调用；Future 检查本身只查询数据。
+`provider` / `model` 请替换成 DSH 中实际可用的模型路由。`userId` 是可信个人身份；空 `sessionIds` 不会启用全部会话，需匹配工作区规则，不适合直接用于多人共享聊天。维护新对话会产生额外模型调用；Future 检查本身只查询数据。
 
 完整说明：[DSH 插件安装与行为](plugins/dsh-mindsea/README.md)。
 

@@ -2,6 +2,8 @@
     - id: mindsea
       name: dsh-mindsea
       config:
+        enabled: false
+        audience: unknown
         baseUrl: http://127.0.0.1:4318
         apiKeyEnv: MINDSEA_API_KEY
         userId: local-owner

@@ -77,6 +77,11 @@ test(
   async (t) => {
     const store = new Store(":memory:");
     const key = "runtime-fixture-secret-at-least-24";
+    const personal = store.access.create({
+      personName: "Runtime owner",
+      brainName: "Runtime brain",
+    });
+    const identity = store.access.authenticate(personal.token);
     const server = createApp(store, key);
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
@@ -84,7 +89,7 @@ test(
     assert.ok(address && typeof address !== "string");
     const ctx = new Context();
     const old = process.env.MINDSEA_RUNTIME_TEST_KEY;
-    process.env.MINDSEA_RUNTIME_TEST_KEY = key;
+    process.env.MINDSEA_RUNTIME_TEST_KEY = personal.token;
     t.after(async () => {
       await ctx.fiber.dispose();
       await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -104,14 +109,36 @@ test(
     const installed = await ctx.plugin(plugin, {
       baseUrl: `http://127.0.0.1:${address.port}`,
       apiKeyEnv: "MINDSEA_RUNTIME_TEST_KEY",
-      userId: "runtime-owner",
+      userId: personal.brainId,
       provider: "local-fixture",
       model: "fixture",
       timeZone: "Asia/Shanghai",
-      sessionIds: [],
+      enabled: true,
+      audience: "private",
+      sessionIds: ["mindsea-runtime-test"],
       hookBudgetMs: 1000,
       pollMs: 100,
     });
+    const disabled = await ctx.agentLoop.create(SessionId("unrelated-session"), {
+      provider: "local-fixture",
+      model: "fixture",
+    });
+    disabled.followup(
+      createMessage({
+        role: "user",
+        source: { kind: "user" },
+        content: [{ type: "text", text: "这段话不应该存进脑海" }],
+      }),
+    );
+    await disabled.whenIdle();
+    assert.equal(store.db.prepare("SELECT count(*) n FROM events").get()!.n, 0);
+    assert.equal(model.calls.filter((call) => call.system).length, 0);
+    assert.equal(
+      model.calls
+        .flatMap((call) => call.tools ?? [])
+        .some((tool) => tool.name.startsWith("mindsea_")),
+      false,
+    );
     const agent = await ctx.agentLoop.create(SessionId("mindsea-runtime-test"), {
       provider: "local-fixture",
       model: "fixture",
@@ -131,12 +158,12 @@ test(
     const until = Date.now() + 6000;
     while (
       Date.now() < until &&
-      !store.memory.records.list("runtime-owner").some((r) => r.layer === "L3")
+      !store.memory.records.list(identity.namespace).some((r) => r.layer === "L3")
     )
       await new Promise((resolve) => setTimeout(resolve, 50));
     assert.equal(
-      store.memory.retrieval.recall("runtime-owner", { intent: "preference" }).items[0]
-        ?.layer,
+      store.memory.retrieval.recall(identity.namespace, { intent: "preference" })
+        .items[0]?.layer,
       "L3",
     );
     assert.ok(model.calls.some((call) => call.system?.includes("Maintain Mindsea L1")));

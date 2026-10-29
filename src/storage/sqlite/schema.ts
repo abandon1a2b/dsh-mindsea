@@ -1,9 +1,10 @@
+import { accessSchema } from "./access.ts";
 import { migrateMemory } from "./memory-schema.ts";
 import type { DatabaseSync } from "node:sqlite";
 
 export function initializeSchema(db: DatabaseSync): void {
   const version = db.prepare("PRAGMA user_version").get()!.user_version as number;
-  if (version > 3) {
+  if (version > 4) {
     throw new Error("Database schema is newer than this server");
   }
   db.exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;");
@@ -29,7 +30,8 @@ export function initializeSchema(db: DatabaseSync): void {
 
     `);
     migrateMemory(db);
-    db.exec("PRAGMA user_version=3");
+    accessSchema(db);
+    db.exec("PRAGMA user_version=4");
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

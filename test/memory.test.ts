@@ -206,7 +206,7 @@ test("invalid status and missing future time are rejected", (t) => {
 
 test("HTTP authentication, tenant boundaries, context, validation and update conflict", async (t) => {
   const store = new Store(":memory:");
-  const server = createApp(store, key);
+  const server = createApp(store, key, undefined, { legacyAccess: true });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(async () => {

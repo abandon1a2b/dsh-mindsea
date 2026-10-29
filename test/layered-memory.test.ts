@@ -461,7 +461,7 @@ test("database restart retains layered records and unfinished leases", () => {
 test("HTTP memory worker performs complete L0-L3 cycle with evidence and tenant isolation", async (t) => {
   const store = new Store(":memory:");
   const key = "layered-memory-test-long-enough-key";
-  const server = createApp(store, key);
+  const server = createApp(store, key, undefined, { legacyAccess: true });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(async () => {

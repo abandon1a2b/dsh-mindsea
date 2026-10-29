@@ -36,7 +36,7 @@ export function registerMemoryTools(
       .map((block) => block.text)
       .join("\n");
     if (!content.trim()) throw new Error("No textual user evidence");
-    const id = eventId(agent!.id, source.data.id);
+    const id = eventId(agent!.id, source.data.id, api.userId);
     await api.record({
       id,
       sessionId: agent!.id,

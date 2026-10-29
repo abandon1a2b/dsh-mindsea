@@ -18,7 +18,7 @@ test("failed schema upgrade rolls back DDL and does not advance its version", (t
   );
   db.exec("DROP TABLE reconciliation_jobs");
   initializeSchema(db);
-  assert.equal(db.prepare("PRAGMA user_version").get()!.user_version, 3);
+  assert.equal(db.prepare("PRAGMA user_version").get()!.user_version, 4);
 });
 
 test("schema v2 upgrades events without fabricating verified L3 or replaying old jobs", (t) => {

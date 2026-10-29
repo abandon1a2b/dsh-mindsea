@@ -17,13 +17,16 @@ import type { Config } from "../plugins/dsh-mindsea/src/config.ts";
 
 const key = "mindsea-test-plugin-key-at-least-24-chars";
 const defaults: Config = {
+  legacyAccess: true,
+  enabled: true,
+  audience: "private",
   baseUrl: "",
   apiKeyEnv: "MINDSEA_TEST_PLUGIN_KEY",
   userId: "owner",
   provider: "mock",
   model: "mock-model",
   timeZone: "Asia/Shanghai",
-  sessionIds: [],
+  sessionIds: ["session-a"],
   hookBudgetMs: 1500,
   pollMs: 100,
 };
@@ -36,7 +39,7 @@ async function harness(
   }),
 ) {
   const store = new Store(":memory:");
-  const server = createApp(store, key);
+  const server = createApp(store, key, undefined, { legacyAccess: true });
   const requests: string[] = [];
   server.on("request", (req) => requests.push(req.url!));
   server.listen(0, "127.0.0.1");
@@ -50,7 +53,19 @@ async function harness(
   const ctx = {
     agents: { list: () => [] },
     on: (name: string, fn: Function) => {
-      hooks.set(name, fn);
+      const previous = hooks.get(name);
+      hooks.set(
+        name,
+        previous && name === "agent/pre-step"
+          ? async (payload: unknown, next: Function) =>
+              fn(payload, () => previous(payload, next))
+          : previous && name === "agent/created"
+            ? async (payload: unknown) => {
+                await previous(payload);
+                return fn(payload);
+              }
+            : fn,
+      );
       return () => hooks.delete(name);
     },
     effect: (setup: () => Function) => {
@@ -89,6 +104,7 @@ async function harness(
   });
   const agent = {
     id: "session-a",
+    ctx,
     session: { id: "session-a", snapshotEvents: () => [] },
   } as unknown as Agent;
   const step = async (turn: number, content?: string) => {
